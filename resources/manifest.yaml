@@ -1,2 +1,3 @@
 contracts:
   - abi: "./resources/Gravity.json"
+  - abi: "./resources/ERC721.json"
