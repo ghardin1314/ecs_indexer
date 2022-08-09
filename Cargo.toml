@@ -1,0 +1,12 @@
+[package]
+name = "ecs_indexer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = "0.8.0"
+ethers = { version = "0.17.0", features = ["abigen"] }
+serde = "1.0.143"
+serde_yaml = "0.9.4"
