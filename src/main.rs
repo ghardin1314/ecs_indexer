@@ -31,8 +31,10 @@ fn main() {
         .insert_resource(provider)
         .add_startup_system(systems::load_config)
         .add_startup_system(systems::query_block)
+        .add_startup_system(systems::query_block_loop)
         .add_system(systems::handle_block)
-        .add_system(systems::read_events)
+        // .add_system(systems::read_events)
+        .add_system(systems::handle_block_loop)
         // .add_system(systems::read_events)
         // .add_stage_before(
         //     CoreStage::Update,

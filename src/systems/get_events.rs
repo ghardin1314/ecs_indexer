@@ -1,7 +1,7 @@
 use async_compat::Compat;
 use bevy::tasks::AsyncComputeTaskPool;
 use crossbeam_channel::{bounded, Receiver};
-use futures_lite::future;
+use futures_lite::{future, Future};
 
 use crate::prelude::*;
 
@@ -31,4 +31,31 @@ pub fn handle_block(
             commands.entity(entity).despawn();
         }
     }
+}
+
+pub fn query_block_loop(mut commands: Commands, provider: Res<Provider<Http>>) {
+    let provider_cl = provider.clone();
+
+    let (tx, rx) = bounded::<U64>(10);
+
+    std::thread::spawn(move || loop {
+        let block_number = await_ft(provider_cl.get_block_number()).unwrap();
+
+        tx.send(block_number).unwrap();
+        let on_sec = std::time::Duration::from_secs(5);
+        std::thread::sleep(on_sec);
+    });
+
+    commands.insert_resource(CurrentBlockReceiver(rx));
+}
+
+pub fn handle_block_loop(mut commands: Commands, receiver: ResMut<CurrentBlockReceiver>) {
+    for block_number in receiver.try_iter() {
+        println!("Current loop block: {:?}", block_number);
+    }
+}
+
+
+fn await_ft<T>(ft: impl Future<Output = T>) -> T {
+	future::block_on(Compat::new(ft))
 }
