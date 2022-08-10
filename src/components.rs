@@ -1,9 +1,11 @@
 use crate::prelude::*;
 
+use bevy::tasks::Task;
+use crossbeam_channel::Receiver;
 use ethers::{abi::Event, types::Address};
 
 #[derive(Component)]
-struct Contract {}
+pub struct Contract {}
 
 #[derive(Component)]
 pub struct EventTrigger {
@@ -12,7 +14,10 @@ pub struct EventTrigger {
 }
 
 #[derive(Component)]
-struct TriggerAction {}
+pub struct TriggerAction {}
 
 #[derive(Component)]
-struct StartBlock(usize);
+pub struct StartBlock(usize);
+
+#[derive(Component)]
+pub struct CurrentBlockQuery(pub Task<U64>);
