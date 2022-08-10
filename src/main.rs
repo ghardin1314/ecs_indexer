@@ -25,19 +25,21 @@ fn main() {
 
     App::new()
         .insert_resource(ScheduleRunnerSettings::run_loop(Duration::from_secs_f64(
-            1.0 / 60.0,
+            1.0,
         )))
         .add_plugins(MinimalPlugins)
         .insert_resource(provider)
         .add_startup_system(systems::load_config)
         .add_startup_system(systems::query_block)
+        .add_system(systems::handle_block)
+        .add_system(systems::read_events)
         // .add_system(systems::read_events)
-        .add_stage_before(
-            CoreStage::Update,
-            AppStages::GetEvents,
-            SystemStage::parallel(),
-        )
+        // .add_stage_before(
+        //     CoreStage::Update,
+        //     AppStages::GetEvents,
+        //     SystemStage::parallel(),
+        // )
         // .add_system_to_stage(AppStages::GetEvents, systems::query_block)
-        .add_system_to_stage(AppStages::GetEvents, systems::handle_block)
+        // .add_system_to_stage(AppStages::GetEvents, systems::handle_block)
         .run();
 }
