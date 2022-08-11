@@ -1,7 +1,6 @@
 use async_compat::Compat;
 use bevy::tasks::AsyncComputeTaskPool;
 use crossbeam_channel::{bounded, Receiver};
-use futures_lite::{future, Future};
 
 use crate::prelude::*;
 
@@ -13,9 +12,8 @@ pub fn query_block(mut commands: Commands, provider: Res<Provider<Http>>) {
     let thread_pool = AsyncComputeTaskPool::get();
 
     // `Compat` here transforms a tokio future into a generic future. Not sure effect on performance
-    let task = thread_pool.spawn(Compat::new(async move {
-        provider_cl.get_block_number().await.unwrap()
-    }));
+    let task =
+        thread_pool.spawn(async move { provider_cl.get_block_number().await.unwrap() }.to_compat());
 
     commands.spawn().insert(CurrentBlockQuery(task));
 }
@@ -39,11 +37,14 @@ pub fn query_block_loop(mut commands: Commands, provider: Res<Provider<Http>>) {
     let (tx, rx) = bounded::<U64>(10);
 
     std::thread::spawn(move || loop {
-        let block_number = await_ft(provider_cl.get_block_number()).unwrap();
+        async {
+            let block_number = provider_cl.get_block_number().await.unwrap();
 
-        tx.send(block_number).unwrap();
-        let on_sec = std::time::Duration::from_secs(5);
-        std::thread::sleep(on_sec);
+            tx.send(block_number).unwrap();
+            let on_sec = std::time::Duration::from_secs(5);
+            std::thread::sleep(on_sec);
+        }
+        .compat_await();
     });
 
     commands.insert_resource(CurrentBlockReceiver(rx));
@@ -53,9 +54,4 @@ pub fn handle_block_loop(mut commands: Commands, receiver: ResMut<CurrentBlockRe
     for block_number in receiver.try_iter() {
         println!("Current loop block: {:?}", block_number);
     }
-}
-
-
-fn await_ft<T>(ft: impl Future<Output = T>) -> T {
-	future::block_on(Compat::new(ft))
 }

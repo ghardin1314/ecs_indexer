@@ -1,0 +1,1 @@
+pub struct ApiKey(pub String);
