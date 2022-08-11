@@ -1,16 +1,16 @@
 use crate::prelude::*;
 
 use bevy::tasks::Task;
-use crossbeam_channel::Receiver;
 use ethers::{abi::Event, types::Address};
 
 #[derive(Component)]
 pub struct Contract {}
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct EventTrigger {
     pub event: Event,
     pub address: Option<Address>,
+    pub start_block: Option<U64>
 }
 
 #[derive(Component)]

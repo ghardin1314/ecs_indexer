@@ -1,1 +1,3 @@
-pub struct ApiKey(pub String);
+use crate::prelude::*;
+
+pub struct StartBlock(pub U64);

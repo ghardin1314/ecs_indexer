@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use ethers::abi::{Abi, Event, Events};
+use ethers::abi::{Abi, Event};
 use std::{fs::File, io::Read};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -13,7 +13,7 @@ struct ContractData {
     name: String,
     abi: String,
     address: Option<Address>,
-    start_block: Option<U64>,
+    start_block: Option<usize>,
     event_triggers: Option<Vec<EventTriggerConfig>>,
 }
 
@@ -25,6 +25,8 @@ struct EventTriggerConfig {
 pub fn load_config(mut commands: Commands) {
     let manifest = open_manifest("./resources/manifest.yaml".to_owned()).unwrap();
 
+    let mut global_start_block = U64::max_value();
+
     for contract_data in manifest.contracts.into_iter() {
         let file = File::open(contract_data.abi.clone()).unwrap();
         let abi = Abi::load(file).unwrap();
@@ -32,6 +34,14 @@ pub fn load_config(mut commands: Commands) {
         let address = contract_data.address;
         let start_block = contract_data.start_block;
 
+        println!("{:?}", start_block);
+
+        // Update global start block with min passed from manifest
+        if let Some(start_block) = start_block {
+            global_start_block = global_start_block.min(U64::from(start_block));
+        }
+
+        // Create event trigger components
         if let Some(event_triggers) = contract_data.event_triggers {
             let triggers = trigger_to_event(event_triggers, abi);
 
@@ -39,11 +49,17 @@ pub fn load_config(mut commands: Commands) {
                 commands.spawn().insert(EventTrigger {
                     event,
                     address,
-                    start_block,
+                    start_block: start_block.map_or(None, |num| Some(U64::from(num))),
                 });
             })
         }
     }
+
+    // If block still max, not start blocks passed. Start are first block
+    if global_start_block.eq(&U64::max_value()) {
+        global_start_block = U64::zero();
+    }
+    commands.insert_resource(StartBlock(global_start_block));
 }
 
 fn trigger_to_event(event_triggers: Vec<EventTriggerConfig>, abi: Abi) -> Vec<Event> {
