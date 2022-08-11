@@ -1,10 +1,6 @@
 use crate::prelude::*;
 
-use ethers::{
-    abi::{Abi, AbiParser, Event},
-    prelude::*,
-    utils::Anvil,
-};
+use ethers::abi::{Abi, Event, Events};
 use std::{fs::File, io::Read};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -14,23 +10,52 @@ struct Manifest {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct ContractData {
+    name: String,
     abi: String,
+    address: Option<Address>,
+    start_block: Option<U64>,
+    event_triggers: Option<Vec<EventTriggerConfig>>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+struct EventTriggerConfig {
+    event: String,
 }
 
 pub fn load_config(mut commands: Commands) {
     let manifest = open_manifest("./resources/manifest.yaml".to_owned()).unwrap();
 
-    for contract_data in manifest.contracts.iter() {
+    for contract_data in manifest.contracts.into_iter() {
         let file = File::open(contract_data.abi.clone()).unwrap();
         let abi = Abi::load(file).unwrap();
 
-        for event in abi.events() {
-            commands.spawn().insert(EventTrigger {
-                event: event.clone(),
-                address: None,
-            });
+        let address = contract_data.address;
+        let start_block = contract_data.start_block;
+
+        if let Some(event_triggers) = contract_data.event_triggers {
+            let triggers = trigger_to_event(event_triggers, abi);
+
+            triggers.into_iter().for_each(|event| {
+                commands.spawn().insert(EventTrigger {
+                    event,
+                    address,
+                    start_block,
+                });
+            })
         }
     }
+}
+
+fn trigger_to_event(event_triggers: Vec<EventTriggerConfig>, abi: Abi) -> Vec<Event> {
+    let mut events: Vec<Event> = vec![];
+
+    for trigger in event_triggers {
+        let abi_event = abi.event(&trigger.event).expect("Event not found");
+
+        events.push(abi_event.clone());
+    }
+
+    events
 }
 
 fn open_manifest(path: String) -> Option<Manifest> {
