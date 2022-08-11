@@ -54,22 +54,58 @@ pub fn handle_polled_logs(receiver: ResMut<PollLogsReceiver>, mut events: EventW
     }
 }
 
-pub fn handle_event_triggers(mut events: EventReader<NewLog>, query: Query<&EventTrigger>) {
+pub fn handle_event_triggers(
+    mut events: EventReader<NewLog>,
+    query: Query<(
+        &EventTrigger,
+        Option<&TriggerStartBlock>,
+        Option<&EthAddress>,
+    )>,
+) {
     for log in events.iter() {
         let matching_sigs: Vec<&EventTrigger> = query
             .iter()
-            .filter(|trigger| {
-                log.0
-                    .topics
-                    .first()
-                    // Some events dont have a first topic?
-                    .unwrap_or(&H256::default())
-                    .eq(&trigger.event.signature())
+            .filter(|(trigger, start_block, address)| {
+                let sig_match = matches_signature(&log.0, trigger);
+
+                let addr_match = opt_matches_address(&log.0, address);
+
+                let block_match = opt_past_start_block(&log.0, start_block);
+
+                sig_match & addr_match & block_match
             })
+            .map(|(trigger, _, _)| trigger)
             .collect();
 
-        matching_sigs
-            .iter()
-            .for_each(|trigger| println!("found event {:?} with signature matching {:?}", log.0, trigger))
+        matching_sigs.iter().for_each(|trigger| {
+            println!(
+                "found event {:?} with signature matching {:?}",
+                log.0, trigger
+            )
+        })
+    }
+}
+
+fn matches_signature(log: &Log, trigger: &&EventTrigger) -> bool {
+    log.topics
+        .first()
+        // Some events dont have a first topic?
+        .unwrap_or(&H256::default())
+        .eq(&trigger.event.signature())
+}
+
+fn opt_matches_address(log: &Log, address: &Option<&EthAddress>) -> bool {
+    match address {
+        Some(address) => log.address.eq(&address.0),
+        None => true,
+    }
+}
+
+fn opt_past_start_block(log: &Log, start_block: &Option<&TriggerStartBlock>) -> bool {
+    match start_block {
+        Some(block) => log
+            .block_number
+            .map_or(true, |log_block| log_block.ge(&block.0)),
+        None => true,
     }
 }

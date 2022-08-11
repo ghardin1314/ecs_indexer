@@ -32,13 +32,13 @@ pub fn load_config(mut commands: Commands) {
         let abi = Abi::load(file).unwrap();
 
         let address = contract_data.address;
-        let start_block = contract_data.start_block;
+        let start_block = contract_data.start_block.map(|block| U64::from(block));
 
         println!("{:?}", start_block);
 
         // Update global start block with min passed from manifest
         if let Some(start_block) = start_block {
-            global_start_block = global_start_block.min(U64::from(start_block));
+            global_start_block = global_start_block.min(start_block);
         }
 
         // Create event trigger components
@@ -46,11 +46,17 @@ pub fn load_config(mut commands: Commands) {
             let triggers = trigger_to_event(event_triggers, abi);
 
             triggers.into_iter().for_each(|event| {
-                commands.spawn().insert(EventTrigger {
-                    event,
-                    address,
-                    start_block: start_block.map_or(None, |num| Some(U64::from(num))),
-                });
+                let entity = commands.spawn().insert(EventTrigger { event }).id();
+
+                if let Some(address) = address {
+                    commands.entity(entity).insert(EthAddress(address));
+                }
+
+                if let Some(start_block) = start_block {
+                    commands
+                        .entity(entity)
+                        .insert(TriggerStartBlock(start_block));
+                }
             })
         }
     }
