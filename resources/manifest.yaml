@@ -5,5 +5,15 @@ contracts:
     name: Factory
     event_triggers:
       - event: PoolCreated
-  # - abi: "./resources/Pool.json"
-  #   name: Pool
+        actions:
+          - action_type: CreateContract
+            template: Pool
+            field: pool
+
+templates:
+  - abi: "./resources/Pool.json"
+    name: Pool
+    event_triggers:
+      - event: Swap
+        actions:
+          - action_type: Debug

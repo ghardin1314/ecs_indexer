@@ -1,11 +1,13 @@
 use crate::prelude::*;
 
+use bevy::utils::HashMap;
 use ethers::abi::{Abi, Event};
 use std::{fs::File, io::Read};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Manifest {
     contracts: Vec<ContractData>,
+    templates: Vec<ContractTemplateConfig>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -20,6 +22,21 @@ struct ContractData {
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 struct EventTriggerConfig {
     event: String,
+    actions: Vec<TriggerActionConfig>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+struct TriggerActionConfig {
+    action_type: TriggerActionType,
+    template: Option<String>,
+    field: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct ContractTemplateConfig {
+    name: String,
+    abi: String,
+    event_triggers: Option<Vec<EventTriggerConfig>>,
 }
 
 pub fn load_config(mut commands: Commands) {
@@ -27,14 +44,46 @@ pub fn load_config(mut commands: Commands) {
 
     let mut global_start_block = U64::max_value();
 
-    for contract_data in manifest.contracts.into_iter() {
+    let mut templates = HashMap::new();
+
+    manifest.templates.into_iter().for_each(|template| {
+        let abi = abi_from_path(template.abi);
+
+        let mut event_trigger_entities = vec![];
+
+        if let Some(event_triggers) = template.event_triggers {
+            event_triggers.into_iter().for_each(|config| {
+                let event = validate_event(&config, &abi);
+
+                // TODO: Load all templates before spawning actions
+
+                let actions_entities =
+                    spawn_actions(config.actions, &event, &templates, &mut commands);
+
+                let entity = commands
+                    .spawn()
+                    .insert(EventTrigger { event })
+                    .push_children(&actions_entities)
+                    .id();
+                event_trigger_entities.push(entity);
+            });
+        }
+
+        let template_entity = commands
+            .spawn()
+            .insert(ContractTemplate)
+            .push_children(&event_trigger_entities)
+            .id();
+
+        templates.insert(template.name, template_entity);
+    });
+
+    manifest.contracts.into_iter().for_each(|contract_data| {
         let file = File::open(contract_data.abi.clone()).unwrap();
         let abi = Abi::load(file).unwrap();
 
         let address = contract_data.address;
         let start_block = contract_data.start_block.map(|block| U64::from(block));
-
-        println!("{:?}", start_block);
 
         // Update global start block with min passed from manifest
         if let Some(start_block) = start_block {
@@ -43,23 +92,30 @@ pub fn load_config(mut commands: Commands) {
 
         // Create event trigger components
         if let Some(event_triggers) = contract_data.event_triggers {
-            let triggers = trigger_to_event(event_triggers, abi);
+            event_triggers.into_iter().for_each(|trigger_config| {
+                let event = validate_event(&trigger_config, &abi);
 
-            triggers.into_iter().for_each(|event| {
-                let entity = commands.spawn().insert(EventTrigger { event }).id();
+                let actions_entities =
+                    spawn_actions(trigger_config.actions, &event, &templates, &mut commands);
+
+                let trigger_entity = commands
+                    .spawn()
+                    .insert(EventTrigger { event })
+                    .insert(ActiveTrigger)
+                    .push_children(&actions_entities)
+                    .id();
 
                 if let Some(address) = address {
-                    commands.entity(entity).insert(EthAddress(address));
+                    commands.entity(trigger_entity).insert(EthAddress(address));
                 }
-
                 if let Some(start_block) = start_block {
                     commands
-                        .entity(entity)
+                        .entity(trigger_entity)
                         .insert(TriggerStartBlock(start_block));
                 }
-            })
+            });
         }
-    }
+    });
 
     // If block still max, not start blocks passed. Start are first block
     if global_start_block.eq(&U64::max_value()) {
@@ -68,16 +124,69 @@ pub fn load_config(mut commands: Commands) {
     commands.insert_resource(StartBlock(global_start_block));
 }
 
-fn trigger_to_event(event_triggers: Vec<EventTriggerConfig>, abi: Abi) -> Vec<Event> {
-    let mut events: Vec<Event> = vec![];
+fn abi_from_path(path: String) -> Abi {
+    let file = File::open(path).unwrap();
+    Abi::load(file).unwrap()
+}
 
-    for trigger in event_triggers {
-        let abi_event = abi.event(&trigger.event).expect("Event not found");
+fn validate_event(config: &EventTriggerConfig, abi: &Abi) -> Event {
+    abi.event(&config.event).expect("Event not found").clone()
+}
 
-        events.push(abi_event.clone());
-    }
+fn spawn_actions(
+    actions: Vec<TriggerActionConfig>,
+    event: &Event,
+    templates: &HashMap<String, Entity>,
+    commands: &mut Commands,
+) -> Vec<Entity> {
+    let mut actions_entities = vec![];
+    actions.into_iter().for_each(|action| {
+        let mut template = None;
 
-    events
+        match action.action_type {
+            TriggerActionType::CreateContract => {
+                template = Some(validate_create_contract(&action, event, templates))
+            }
+            TriggerActionType::Debug => {}
+        };
+
+        let action_entity = commands
+            .spawn()
+            .insert(TriggerAction {
+                action_type: action.action_type,
+                field: action.field,
+                template,
+            })
+            .id();
+
+        actions_entities.push(action_entity);
+    });
+
+    actions_entities
+}
+
+fn validate_create_contract(
+    action: &TriggerActionConfig,
+    event: &Event,
+    templates: &HashMap<String, Entity>,
+) -> Entity {
+    let template_name = action
+        .template
+        .as_ref()
+        .expect("Template name not provided");
+    let field = action.field.as_ref().expect("Template field not provided");
+
+    let template = templates
+        .get(template_name)
+        .expect("Template for action not found");
+
+    event
+        .inputs
+        .iter()
+        .find(|input| input.name.eq(field))
+        .expect("field not found in trigger event");
+
+    *template
 }
 
 fn open_manifest(path: String) -> Option<Manifest> {

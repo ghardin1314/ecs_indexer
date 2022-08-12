@@ -15,6 +15,7 @@ mod prelude {
     pub use std::env;
 }
 
+use dotenv::dotenv;
 use prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StageLabel)]
@@ -24,6 +25,9 @@ enum AppStage {
 }
 
 fn main() {
+    // TODO remove for prod
+    dotenv().ok();
+
     let api_key = env::var("API_KEY").expect("no api key provided");
     let provider_http =
         Provider::<Http>::try_from(format!("https://eth-mainnet.g.alchemy.com/v2/{}", api_key))
@@ -41,6 +45,7 @@ fn main() {
         .insert_resource(provider_http)
         .insert_resource(provider_ws)
         .add_event::<systems::NewLog>()
+        .add_event::<systems::ActionFired>()
         .add_startup_stage(AppStage::Config, SystemStage::parallel())
         .add_startup_stage(AppStage::PollEvents, SystemStage::parallel())
         .add_startup_system_to_stage(AppStage::Config, systems::load_config)
@@ -50,6 +55,7 @@ fn main() {
         )
         .add_system(systems::handle_polled_logs)
         .add_system(systems::handle_event_triggers)
+        .add_system(systems::handle_actions_fired)
         // .add_startup_system(systems::query_block)
         // .add_startup_system(systems::query_block_loop)
         // .add_startup_system(systems::create_logs_subscription)

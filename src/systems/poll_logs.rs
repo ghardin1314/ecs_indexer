@@ -8,6 +8,7 @@ use crate::prelude::*;
 pub struct PollLogsReceiver(Receiver<Log>);
 
 pub struct NewLog(Log);
+pub struct ActionFired(Entity);
 
 pub fn poll_logs(
     mut commands: Commands,
@@ -55,17 +56,23 @@ pub fn handle_polled_logs(receiver: ResMut<PollLogsReceiver>, mut events: EventW
 }
 
 pub fn handle_event_triggers(
-    mut events: EventReader<NewLog>,
-    query: Query<(
-        &EventTrigger,
-        Option<&TriggerStartBlock>,
-        Option<&EthAddress>,
-    )>,
+    mut log_events: EventReader<NewLog>,
+    trigger_query: Query<
+        (
+            &EventTrigger,
+            Option<&TriggerStartBlock>,
+            Option<&EthAddress>,
+            &Children,
+        ),
+        With<ActiveTrigger>,
+    >,
+    actions_query: Query<&TriggerAction>,
+    mut action_events: EventWriter<ActionFired>,
 ) {
-    for log in events.iter() {
-        let matching_sigs: Vec<&EventTrigger> = query
+    for log in log_events.iter() {
+        let matching_sigs: Vec<(&EventTrigger, &Children)> = trigger_query
             .iter()
-            .filter(|(trigger, start_block, address)| {
+            .filter(|(trigger, start_block, address, _)| {
                 let sig_match = matches_signature(&log.0, trigger);
 
                 let addr_match = opt_matches_address(&log.0, address);
@@ -74,16 +81,31 @@ pub fn handle_event_triggers(
 
                 sig_match & addr_match & block_match
             })
-            .map(|(trigger, _, _)| trigger)
+            .map(|(trigger, _, _, children)| (trigger, children))
             .collect();
 
-        matching_sigs.iter().for_each(|trigger| {
+        matching_sigs.iter().for_each(|(trigger, children)| {
             println!(
                 "found event {:?} with signature matching {:?}",
                 log.0, trigger
-            )
+            );
+
+            children
+                .into_iter()
+                .for_each(|action| action_events.send(ActionFired(*action)));
         })
     }
+}
+
+pub fn handle_actions_fired(
+    actions_query: Query<&TriggerAction>,
+    mut events: EventReader<ActionFired>,
+) {
+    events.iter().for_each(|event| {
+        let action = actions_query.get(event.0);
+
+        println!("action triggered: {:?}", { action });
+    });
 }
 
 fn matches_signature(log: &Log, trigger: &&EventTrigger) -> bool {
