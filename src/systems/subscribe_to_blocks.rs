@@ -31,7 +31,7 @@ pub fn initiate_block_subscription(mut commands: Commands, provider: Res<Provide
 pub fn handle_new_block(receiver: ResMut<CurrentBlockReceiver>, mut commands: Commands) {
     for block in receiver.try_iter() {
         if let Some(block_number) = block.number {
-            print!("Got block: {:?}", block);
+            println!("Got block: {:?}", block.number);
             commands.insert_resource(CurrentBlock(block_number));
         }
     }

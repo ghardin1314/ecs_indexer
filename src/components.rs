@@ -26,6 +26,7 @@ pub struct TriggerAction;
 pub struct CreateContractAction {
     pub template: Entity,
     pub field: String,
+    pub event: Event
 }
 
 #[derive(Component, Debug)]

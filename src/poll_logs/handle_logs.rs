@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, config::FromBlock};
 
 use super::{components::CurrentLogsFetch, events::NewLog};
 

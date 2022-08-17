@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+use super::resources::{FromBlock, ReorgBlocks};
+
 use bevy::utils::HashMap;
 use ethers::abi::{Abi, Event};
 use std::{fs::File, io::Read};
@@ -158,9 +160,11 @@ fn spawn_actions(
         match action.action_type {
             TriggerActionType::CreateContract => {
                 let (template, field) = validate_create_contract(&action, event, templates);
-                commands
-                    .entity(action_entity)
-                    .insert(CreateContractAction { template, field });
+                commands.entity(action_entity).insert(CreateContractAction {
+                    template,
+                    field,
+                    event: event.clone(),
+                });
             }
             TriggerActionType::Debug => {
                 commands.entity(action_entity).insert(DebugAction);
