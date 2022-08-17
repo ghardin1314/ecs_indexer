@@ -1,24 +1,33 @@
 use std::time::Instant;
 
-use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 
 use crate::prelude::*;
 
-#[derive(Deref)]
-pub struct PollLogsReceiver(Receiver<Log>);
-
 pub struct NewLog(Log);
-pub struct ActionFired(Entity);
+
+pub struct ActionFired {
+    action: Entity,
+    log: Log,
+}
 
 pub fn poll_logs(
     mut commands: Commands,
-    start_block: Res<StartBlock>,
+    tx: ResMut<PollLogsSender>,
+    from_block: Res<StartBlock>,
+    reorg_blocks: Res<ReorgBlocks>,
+    current_block: Res<CurrentBlock>,
+    is_polling: ResMut<PollingLogs>,
     provider: Res<Provider<Http>>,
 ) {
-    let (tx, rx) = unbounded::<Log>();
+    if is_polling.0 || from_block.0 == current_block.0 {
+        return;
+    }
+
+    // let (tx, rx) = unbounded::<Log>();
     let provider_cl = provider.clone();
 
-    let mut from_block = start_block.0.clone();
+    let mut from_block = from_block.0.clone();
 
     std::thread::spawn(move || loop {
         let start = Instant::now();
@@ -66,7 +75,6 @@ pub fn handle_event_triggers(
         ),
         With<ActiveTrigger>,
     >,
-    actions_query: Query<&TriggerAction>,
     mut action_events: EventWriter<ActionFired>,
 ) {
     for log in log_events.iter() {
@@ -90,44 +98,52 @@ pub fn handle_event_triggers(
                 log.0, trigger
             );
 
-            children
-                .into_iter()
-                .for_each(|action| action_events.send(ActionFired(*action)));
+            children.into_iter().for_each(|action| {
+                action_events.send(ActionFired {
+                    action: *action,
+                    log: log.0.clone(),
+                })
+            });
         })
     }
 }
 
-pub fn handle_actions_fired(
-    actions_query: Query<&TriggerAction>,
+pub fn handle_create_contract_actions(
+    actions_query: Query<&TriggerAction, With<CreateContractAction>>,
     mut events: EventReader<ActionFired>,
 ) {
     events.iter().for_each(|event| {
-        let action = actions_query.get(event.0);
+        let action = actions_query.get(event.action);
 
         println!("action triggered: {:?}", { action });
+
+        debug!("action triggered: {:?}", { action });
+
+        // TODO: activate all triggers associated with contract template
+        // TODO: assign address and start block to triggers
     });
 }
 
-fn matches_signature(log: &Log, trigger: &&EventTrigger) -> bool {
-    log.topics
-        .first()
-        // Some events dont have a first topic?
-        .unwrap_or(&H256::default())
-        .eq(&trigger.event.signature())
-}
+// fn matches_signature(log: &Log, trigger: &&EventTrigger) -> bool {
+//     log.topics
+//         .first()
+//         // Some events dont have a first topic?
+//         .unwrap_or(&H256::default())
+//         .eq(&trigger.event.signature())
+// }
 
-fn opt_matches_address(log: &Log, address: &Option<&EthAddress>) -> bool {
-    match address {
-        Some(address) => log.address.eq(&address.0),
-        None => true,
-    }
-}
+// fn opt_matches_address(log: &Log, address: &Option<&EthAddress>) -> bool {
+//     match address {
+//         Some(address) => log.address.eq(&address.0),
+//         None => true,
+//     }
+// }
 
-fn opt_past_start_block(log: &Log, start_block: &Option<&TriggerStartBlock>) -> bool {
-    match start_block {
-        Some(block) => log
-            .block_number
-            .map_or(true, |log_block| log_block.ge(&block.0)),
-        None => true,
-    }
-}
+// fn opt_past_start_block(log: &Log, start_block: &Option<&TriggerStartBlock>) -> bool {
+//     match start_block {
+//         Some(block) => log
+//             .block_number
+//             .map_or(true, |log_block| log_block.ge(&block.0)),
+//         None => true,
+//     }
+// }

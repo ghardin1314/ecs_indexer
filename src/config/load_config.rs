@@ -8,21 +8,19 @@ use std::{fs::File, io::Read};
 struct Manifest {
     contracts: Vec<ContractData>,
     templates: Vec<ContractTemplateConfig>,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct ContractData {
-    name: String,
-    abi: String,
-    address: Option<Address>,
-    start_block: Option<usize>,
-    event_triggers: Option<Vec<EventTriggerConfig>>,
+    reorg_blocks: Option<U64>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 struct EventTriggerConfig {
     event: String,
     actions: Vec<TriggerActionConfig>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+pub enum TriggerActionType {
+    CreateContract,
+    Debug,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -36,6 +34,15 @@ struct TriggerActionConfig {
 struct ContractTemplateConfig {
     name: String,
     abi: String,
+    event_triggers: Option<Vec<EventTriggerConfig>>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct ContractData {
+    name: String,
+    abi: String,
+    address: Option<Address>,
+    start_block: Option<usize>,
     event_triggers: Option<Vec<EventTriggerConfig>>,
 }
 
@@ -121,7 +128,12 @@ pub fn load_config(mut commands: Commands) {
     if global_start_block.eq(&U64::max_value()) {
         global_start_block = U64::zero();
     }
-    commands.insert_resource(StartBlock(global_start_block));
+    commands.insert_resource(FromBlock(global_start_block));
+
+    // TODO: Add some defaults for reorg_blocks
+    commands.insert_resource(ReorgBlocks(manifest.reorg_blocks.unwrap_or_default()));
+
+    println!("Loaded config");
 }
 
 fn abi_from_path(path: String) -> Abi {
@@ -141,23 +153,19 @@ fn spawn_actions(
 ) -> Vec<Entity> {
     let mut actions_entities = vec![];
     actions.into_iter().for_each(|action| {
-        let mut template = None;
+        let action_entity = commands.spawn().insert(TriggerAction).id();
 
         match action.action_type {
             TriggerActionType::CreateContract => {
-                template = Some(validate_create_contract(&action, event, templates))
+                let (template, field) = validate_create_contract(&action, event, templates);
+                commands
+                    .entity(action_entity)
+                    .insert(CreateContractAction { template, field });
             }
-            TriggerActionType::Debug => {}
+            TriggerActionType::Debug => {
+                commands.entity(action_entity).insert(DebugAction);
+            }
         };
-
-        let action_entity = commands
-            .spawn()
-            .insert(TriggerAction {
-                action_type: action.action_type,
-                field: action.field,
-                template,
-            })
-            .id();
 
         actions_entities.push(action_entity);
     });
@@ -169,7 +177,7 @@ fn validate_create_contract(
     action: &TriggerActionConfig,
     event: &Event,
     templates: &HashMap<String, Entity>,
-) -> Entity {
+) -> (Entity, String) {
     let template_name = action
         .template
         .as_ref()
@@ -186,7 +194,7 @@ fn validate_create_contract(
         .find(|input| input.name.eq(field))
         .expect("field not found in trigger event");
 
-    *template
+    (*template, field.to_string())
 }
 
 fn open_manifest(path: String) -> Option<Manifest> {
