@@ -2,9 +2,11 @@ use ethers::abi::{RawLog, Token};
 
 use crate::{poll_logs::ActionFired, prelude::*};
 
+use super::components::{SourceAction, SourceTemplate};
+
 pub fn handle_contract_creation(
-    actions_query: Query<(&TriggerAction, &CreateContractAction)>,
-    templates_query: Query<&Children, With<ContractTemplate>>,
+    actions_query: Query<(&TriggerAction, &SourceAction)>,
+    templates_query: Query<&Children, With<SourceTemplate>>,
     event_triggers_query: Query<Entity, With<EventTrigger>>,
     mut events: EventReader<ActionFired>,
     mut commands: Commands,
@@ -26,7 +28,7 @@ pub fn handle_contract_creation(
             let address = &log
                 .params
                 .iter()
-                .find(|param| param.name == create_contract.field)
+                .find(|param| param.name == create_contract.param)
                 .unwrap()
                 .value;
 

@@ -1,5 +1,6 @@
 use crate::{poll_logs::PollLogsStage, prelude::*};
 
+pub mod components;
 mod handle_contract_creation;
 
 use handle_contract_creation::handle_contract_creation;

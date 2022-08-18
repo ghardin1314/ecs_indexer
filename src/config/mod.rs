@@ -1,6 +1,8 @@
 mod load_config;
 mod load_providers;
+mod manifest;
 mod resources;
+mod spawn;
 
 use crate::prelude::*;
 use load_config::load_config;

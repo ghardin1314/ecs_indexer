@@ -1,0 +1,58 @@
+chain:
+  chain_id: 1 
+  reorg_length: 5
+sources:
+  - contract:
+      abi: 
+      name:
+    # Optional
+    address: 
+    # Optional
+    start_block: 
+    # Optional
+    event_triggers:
+      - signature: 
+        source_actions:
+            # Name of template to deploy source from
+          - template:
+            # Name of the event parameter that contains the template address
+            param:
+        notify_actions:
+          # /?
+          - endpoint: 
+templates:
+  - contract:
+      abi:
+      name:
+    event_triggers:
+      - signature: 
+        source_actions:
+            # Name of template to deploy source from
+          - template:
+            # Name of the event parameter that contains the template address
+            param:
+        notify_actions:
+          # /?
+          - endpoint: 
+
+
+
+contracts:
+  - abi: "./resources/Factory.json"
+    address: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+    start_block: 12369621
+    # start_block: 15359115
+    name: Factory
+    event_triggers:
+      - event: PoolCreated
+        actions:
+          - action_type: CreateContract
+            template: Pool
+            field: pool
+templates:
+  - abi: "./resources/Pool.json"
+    name: Pool
+    event_triggers:
+      - event: Swap
+        actions:
+          - action_type: Notify

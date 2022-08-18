@@ -1,20 +1,27 @@
-reorg_blocks: 5
-contracts:
-  - abi: "./resources/Factory.json"
+config:
+  chain: mainnet
+  reorg_length: 5
+sources:
+  - contract:
+      abi: "./resources/Factory.json"
+      name: Factory
     address: "0x1F98431c8aD98523631AE4a59f267346ea31F984"
     start_block: 12369621
     # start_block: 15359115
-    name: Factory
     event_triggers:
-      - event: PoolCreated
-        actions:
-          - action_type: CreateContract
-            template: Pool
-            field: pool
+      - signature: PoolCreated(address indexed,address indexed,uint24 indexed,int24,address)
+        source_actions:
+          - template: Pool
+            param: pool
+        notify_actions:
+          # /?
+          - endpoint: "https://my-endpoint.com"
 templates:
-  - abi: "./resources/Pool.json"
-    name: Pool
+  - contract:
+      abi: "./resources/Pool.json"
+      name: Pool
     event_triggers:
-      - event: Swap
-        actions:
-          - action_type: Debug
+      - signature: Swap(address indexed,address indexed,int256,int256,uint160,uint128,int24)
+        notify_actions:
+          # /?
+          - endpoint: "https://my-endpoint.com"

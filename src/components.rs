@@ -10,9 +10,6 @@ pub struct EventTrigger {
 #[derive(Component)]
 pub struct EthAddress(pub Address);
 
-#[derive(Component)]
-pub struct ContractTemplate;
-
 /// Tag for triggers when they become active
 #[derive(Component, Debug)]
 pub struct ActiveTrigger;
@@ -21,16 +18,6 @@ pub struct ActiveTrigger;
 #[derive(Component, Debug)]
 pub struct TriggerAction;
 
-/// Action to activate new triggers from templates
-#[derive(Component, Debug)]
-pub struct CreateContractAction {
-    pub template: Entity,
-    pub field: String,
-    pub event: Event
-}
-
-#[derive(Component, Debug)]
-pub struct DebugAction;
 
 /// Defined for triggers that should only be active after certain block
 #[derive(Component)]

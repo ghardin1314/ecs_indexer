@@ -8,7 +8,12 @@ mod prelude {
     pub use crate::components::*;
     pub use crate::utils::*;
     pub use async_compat::Compat;
-    pub use bevy::{app::ScheduleRunnerSettings, prelude::*, utils::Duration};
+    pub use bevy::{
+        app::ScheduleRunnerSettings,
+        prelude::*,
+        utils::{Duration, HashMap},
+    };
+    pub use ethers::abi::{Abi, Event};
     pub use ethers::prelude::*;
     pub use futures_lite::{future, Future};
     pub use serde::{Deserialize, Serialize};

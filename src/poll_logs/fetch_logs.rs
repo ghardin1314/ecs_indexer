@@ -1,12 +1,17 @@
 use bevy::tasks::AsyncComputeTaskPool;
 
 use super::components::CurrentLogsFetch;
-use crate::{config::FromBlock, current_block::CurrentBlock, prelude::*};
+use crate::{
+    config::{FromBlock, ReorgBlocks},
+    current_block::CurrentBlock,
+    prelude::*,
+};
 
 pub fn fetch_logs(
     mut commands: Commands,
     init_block: ResMut<FromBlock>,
     current_block: Res<CurrentBlock>,
+    reorg_blocks: Res<ReorgBlocks>,
     provider: Res<Provider<Http>>,
     log_query: Query<(Entity, &CurrentLogsFetch)>,
 ) {
@@ -16,12 +21,15 @@ pub fn fetch_logs(
     }
 
     let from_block = init_block.0.clone();
-    // TODO: Subtract reorg length from current_block
     // to_block is 2k more than last block or the most current block
-    let to_block = current_block.0.min(from_block + 2000);
+    let to_block = (current_block.0 - reorg_blocks.0).min(from_block + 2000);
     let filter = Filter::new().from_block(from_block).to_block(to_block);
 
-    //
+    // println!(
+    //     "current state: from_block: {}, to_block: {}",
+    //     from_block, to_block
+    // );
+
     if from_block.gt(&to_block) {
         // No new blocks yet, skip
         return;
