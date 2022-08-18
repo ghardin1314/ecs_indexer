@@ -1,5 +1,5 @@
 use crate::{
-    config::manifest::SourceActionData, contract_creation::components::SourceAction, prelude::*,
+    config::manifest::SourceActionData, source_creation::components::SourceAction, prelude::*,
 };
 
 pub fn spawn_source_actions(

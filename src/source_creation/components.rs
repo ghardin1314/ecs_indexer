@@ -4,10 +4,6 @@ use crate::prelude::*;
 
 /// Tag for all actions that can be triggered
 #[derive(Component, Debug)]
-pub struct Action;
-
-/// Tag for all actions that can be triggered
-#[derive(Component, Debug)]
 pub struct SourceAction {
     pub template: Entity,
     pub param: String,

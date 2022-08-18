@@ -2,7 +2,7 @@ use bevy::utils::HashMap;
 
 use crate::{
     config::manifest::{Manifest, TemplateData},
-    contract_creation::components::SourceTemplate,
+    source_creation::components::SourceTemplate,
     prelude::*,
 };
 

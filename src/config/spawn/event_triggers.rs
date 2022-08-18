@@ -2,7 +2,7 @@ use ethers::abi::AbiParser;
 
 use crate::{config::manifest::EventTriggerData, prelude::*};
 
-use super::source_actions::spawn_source_actions;
+use super::{notify_actions::spawn_notify_triggers, source_actions::spawn_source_actions};
 
 pub fn spawn_event_triggers(
     event_triggers: &Vec<EventTriggerData>,
@@ -30,7 +30,12 @@ pub fn spawn_event_triggers(
                 .push_children(&source_action_entities);
         }
 
-        // TODO: NotifyTriggers
+        if let Some(notify_actions) = &event_trigger.notify_actions {
+            let notify_action_entities = spawn_notify_triggers(notify_actions, commands);
+            commands
+                .entity(event_trigger_entity)
+                .push_children(&notify_action_entities);
+        }
 
         event_trigger_entities.push(event_trigger_entity);
     });

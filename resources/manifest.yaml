@@ -13,9 +13,9 @@ sources:
         source_actions:
           - template: Pool
             param: pool
-        notify_actions:
-          # /?
-          - endpoint: "https://my-endpoint.com"
+        # notify_actions:
+        #   # /?
+        #   - endpoint: "https://my-endpoint.com"
 templates:
   - contract:
       abi: "./resources/Pool.json"
@@ -25,3 +25,7 @@ templates:
         notify_actions:
           # /?
           - endpoint: "https://my-endpoint.com"
+      - signature: Initialize(uint160,int24)
+        notify_actions:
+          # /?
+          - endpoint: "https://initialize-endpoint.com"

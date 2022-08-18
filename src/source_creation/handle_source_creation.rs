@@ -4,7 +4,7 @@ use crate::{poll_logs::ActionFired, prelude::*};
 
 use super::components::{SourceAction, SourceTemplate};
 
-pub fn handle_contract_creation(
+pub fn handle_source_creation(
     actions_query: Query<(&TriggerAction, &SourceAction)>,
     templates_query: Query<&Children, With<SourceTemplate>>,
     event_triggers_query: Query<Entity, With<EventTrigger>>,
@@ -12,11 +12,11 @@ pub fn handle_contract_creation(
     mut commands: Commands,
 ) {
     events.iter().for_each(|event| {
-        if let Ok((_, create_contract)) = actions_query.get(event.action) {
-            println!("action triggered: {:?}", { create_contract });
+        if let Ok((_, create_source)) = actions_query.get(event.action) {
+            println!("action triggered: {:?}", { create_source });
 
             // parse log from event
-            let log = create_contract
+            let log = create_source
                 .event
                 .parse_log(RawLog {
                     topics: event.log.topics.clone(),
@@ -28,7 +28,7 @@ pub fn handle_contract_creation(
             let address = &log
                 .params
                 .iter()
-                .find(|param| param.name == create_contract.param)
+                .find(|param| param.name == create_source.param)
                 .unwrap()
                 .value;
 
@@ -36,15 +36,15 @@ pub fn handle_contract_creation(
 
             // get children of template
             let children = templates_query
-                .get(create_contract.template)
-                .expect("Found create contract action with no template");
+                .get(create_source.template)
+                .expect("Found create source action with no template");
 
             children.iter().for_each(|child| {
                 let event_trigger = event_triggers_query
                     .get(*child)
                     .expect("Missing event trigger from template");
 
-                // Make Trigger
+                // Make Trigger active
                 commands
                     .entity(event_trigger)
                     .insert(ActiveTrigger)

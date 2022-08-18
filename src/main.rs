@@ -1,8 +1,9 @@
 mod components;
 mod config;
-mod contract_creation;
 mod current_block;
+mod notify;
 mod poll_logs;
+mod source_creation;
 mod utils;
 mod prelude {
     pub use crate::components::*;
@@ -35,6 +36,7 @@ fn main() {
         .add_plugin(config::ConfigPlugin)
         .add_plugin(current_block::CurrentBlockPlugin)
         .add_plugin(poll_logs::PollEventsPlugin)
-        .add_plugin(contract_creation::CreateContractsPlugin)
+        .add_plugin(source_creation::CreateSourcesPlugin)
+        .add_plugin(notify::HandleNotifyPlugin)
         .run();
 }
