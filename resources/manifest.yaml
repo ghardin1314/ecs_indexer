@@ -21,10 +21,10 @@ templates:
       abi: "./resources/Pool.json"
       name: Pool
     event_triggers:
-      - signature: Swap(address indexed,address indexed,int256,int256,uint160,uint128,int24)
-        notify_actions:
-          # /?
-          - endpoint: "https://my-endpoint.com"
+      # - signature: Swap(address indexed,address indexed,int256,int256,uint160,uint128,int24)
+      #   notify_actions:
+      #     # /?
+      #     - endpoint: "https://my-endpoint.com"
       - signature: Initialize(uint160,int24)
         notify_actions:
           # /?

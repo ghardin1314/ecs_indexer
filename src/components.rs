@@ -6,8 +6,9 @@ use ethers::{abi::Event, types::Address};
 #[derive(Component, Debug)]
 pub struct EventTrigger {
     pub event: Event,
+    pub actions: Vec<Entity>,
 }
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct EthAddress(pub Address);
 
 /// Tag for triggers when they become active
@@ -18,9 +19,8 @@ pub struct ActiveTrigger;
 #[derive(Component, Debug)]
 pub struct TriggerAction;
 
-
 /// Defined for triggers that should only be active after certain block
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct TriggerStartBlock(pub U64);
 
 /// Keeping for example. Not in use

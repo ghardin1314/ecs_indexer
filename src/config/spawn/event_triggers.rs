@@ -15,27 +15,28 @@ pub fn spawn_event_triggers(
     event_triggers.iter().for_each(|event_trigger| {
         let event = validate_event_trigger(event_trigger, abi);
 
+        let mut actions = vec![];
+
+        if let Some(source_actions) = &event_trigger.source_actions {
+            let mut source_action_entities =
+                spawn_source_actions(source_actions, &template_entities, &event, commands);
+
+            actions.append(&mut source_action_entities);
+        }
+
+        if let Some(notify_actions) = &event_trigger.notify_actions {
+            let mut notify_action_entities = spawn_notify_triggers(notify_actions, commands);
+
+            actions.append(&mut notify_action_entities);
+        }
+
         let event_trigger_entity = commands
             .spawn()
             .insert(EventTrigger {
                 event: event.clone(),
+                actions,
             })
             .id();
-
-        if let Some(source_actions) = &event_trigger.source_actions {
-            let source_action_entities =
-                spawn_source_actions(source_actions, &template_entities, &event, commands);
-            commands
-                .entity(event_trigger_entity)
-                .push_children(&source_action_entities);
-        }
-
-        if let Some(notify_actions) = &event_trigger.notify_actions {
-            let notify_action_entities = spawn_notify_triggers(notify_actions, commands);
-            commands
-                .entity(event_trigger_entity)
-                .push_children(&notify_action_entities);
-        }
 
         event_trigger_entities.push(event_trigger_entity);
     });

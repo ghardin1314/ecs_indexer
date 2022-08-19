@@ -1,5 +1,5 @@
 mod components;
-mod events;
+pub mod events;
 mod fetch_logs;
 mod filter_logs;
 mod handle_logs;
@@ -22,7 +22,7 @@ impl Plugin for PollEventsPlugin {
         app.add_stage_after(CoreStage::PreUpdate, PollLogsStage, SystemStage::parallel())
             .add_system_to_stage(PollLogsStage, fetch_logs)
             .add_system_to_stage(PollLogsStage, handle_logs.after(fetch_logs))
-            .add_system_to_stage(PollLogsStage, filter_logs.after(handle_logs))
+            // .add_system_to_stage(PollLogsStage, filter_logs.after(handle_logs))
             .add_event::<events::NewLog>()
             .add_event::<events::ActionFired>();
     }

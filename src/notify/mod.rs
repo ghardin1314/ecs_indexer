@@ -2,8 +2,10 @@ use crate::{prelude::*, source_creation::CreateSourcesStage};
 use bevy::prelude::StageLabel;
 
 pub mod components;
+mod filter_notify;
 mod handle_notify;
 
+use filter_notify::filter_creation;
 use handle_notify::handle_notify;
 
 #[derive(StageLabel)]
@@ -18,6 +20,7 @@ impl Plugin for HandleNotifyPlugin {
             HandleNotifyStage,
             SystemStage::parallel(),
         )
-        .add_system_to_stage(HandleNotifyStage, handle_notify);
+        .add_system_to_stage(HandleNotifyStage, filter_creation)
+        .add_system_to_stage(HandleNotifyStage, handle_notify.after(filter_creation));
     }
 }

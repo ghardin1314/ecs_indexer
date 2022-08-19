@@ -7,14 +7,12 @@ use super::components::{SourceAction, SourceTemplate};
 pub fn handle_source_creation(
     actions_query: Query<(&TriggerAction, &SourceAction)>,
     templates_query: Query<&Children, With<SourceTemplate>>,
-    event_triggers_query: Query<Entity, With<EventTrigger>>,
+    event_triggers_query: Query<&EventTrigger>,
     mut events: EventReader<ActionFired>,
     mut commands: Commands,
 ) {
     events.iter().for_each(|event| {
         if let Ok((_, create_source)) = actions_query.get(event.action) {
-            println!("action triggered: {:?}", { create_source });
-
             // parse log from event
             let log = create_source
                 .event
@@ -23,6 +21,11 @@ pub fn handle_source_creation(
                     data: event.log.data.to_vec(),
                 })
                 .unwrap();
+
+            // println!(
+            //     "source action topics: {:?} at block {:?} \n",
+            //     log.params, event.log.block_number
+            // );
 
             // Get address from event param
             let address = &log
@@ -44,14 +47,19 @@ pub fn handle_source_creation(
                     .get(*child)
                     .expect("Missing event trigger from template");
 
-                // Make Trigger active
-                commands
-                    .entity(event_trigger)
+                let event = event_trigger.event.clone();
+                let actions = event_trigger.actions.clone();
+
+                let new_trigger = commands
+                    .spawn()
+                    .insert(EventTrigger { event, actions })
                     .insert(ActiveTrigger)
-                    .insert(TriggerStartBlock(from_block));
+                    .insert(TriggerStartBlock(from_block))
+                    .id();
 
                 if let Token::Address(address) = address {
-                    commands.entity(event_trigger).insert(EthAddress(*address));
+                    commands.entity(new_trigger).insert(EthAddress(*address));
+                    println!("Making new trigger with address {:?}", address);
                 }
             })
         };

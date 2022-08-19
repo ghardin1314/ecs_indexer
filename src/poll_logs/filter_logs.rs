@@ -43,26 +43,4 @@ pub fn filter_logs(
     })
 }
 
-fn matches_signature(log: &Log, trigger: &&EventTrigger) -> bool {
-    log.topics
-        .first()
-        // Some events dont have a first topic?
-        .unwrap_or(&H256::default())
-        .eq(&trigger.event.signature())
-}
 
-fn opt_matches_address(log: &Log, address: &Option<&EthAddress>) -> bool {
-    match address {
-        Some(address) => log.address.eq(&address.0),
-        None => true,
-    }
-}
-
-fn opt_past_start_block(log: &Log, start_block: &Option<&TriggerStartBlock>) -> bool {
-    match start_block {
-        Some(block) => log
-            .block_number
-            .map_or(true, |log_block| log_block.ge(&block.0)),
-        None => true,
-    }
-}
